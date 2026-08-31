@@ -4,456 +4,670 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Гексагональная сетка</title>
+
     <style>
-        /* Основные стили страницы */
-        * {
+        /* ====================
+           СТИЛИ ПРИЛОЖЕНИЯ
+           ==================== */
+
+        html, body {
             margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
+            height: 100%;
             font-family: Arial, sans-serif;
-            background: #f0f0f0;
-            overflow: hidden;
         }
 
-        /* Панель управления слева */
-        .control-panel {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 250px;
-            height: 100vh;
-            background: white;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            z-index: 100;
+        /* Основной layout: слева панель настроек, справа холст */
+        #app {
+            display: flex;
+            height: 100%;
+        }
+
+        /* Левая панель с настройками */
+        #sidebar {
+            width: 300px;
+            min-width: 260px;
+            background: #2f3640;
+            color: #f1f2f6;
+            padding: 16px;
+            box-sizing: border-box;
             overflow-y: auto;
         }
 
-        .control-panel h2 {
-            margin-bottom: 20px;
-            color: #333;
+        #sidebar h2 {
+            margin-top: 0;
+            font-size: 20px;
         }
 
-        /* Группы элементов управления */
-        .control-group {
-            margin-bottom: 20px;
+        /* Блок одного параметра */
+        .field {
+            margin: 12px 0;
         }
 
-        .control-group label {
+        .field label {
             display: block;
-            margin-bottom: 5px;
-            color: #555;
+            margin-bottom: 6px;
             font-size: 14px;
         }
 
-        .control-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
+        .field input[type="number"] {
+            width: 90px;
+            padding: 4px 6px;
             border-radius: 4px;
-            margin-bottom: 10px;
+            border: none;
         }
 
-        .control-group button {
-            width: 100%;
-            padding: 10px;
-            background: #4CAF50;
-            color: white;
+        /* Кнопки */
+        .btn {
+            display: inline-block;
+            margin: 6px 6px 6px 0;
+            padding: 8px 12px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            background: #3498db;
+            color: white;
             font-size: 14px;
         }
 
-        .control-group button:hover {
-            background: #45a049;
+        .btn.secondary {
+            background: #95a5a6;
         }
 
-        /* Холст для отрисовки сетки */
-        #canvas-container {
-            margin-left: 250px;
-            width: calc(100vw - 250px);
-            height: 100vh;
-            overflow: auto;
-            background: #e0e0e0;
+        /* Подсказка */
+        #hint {
+            font-size: 13px;
+            color: #d2dae2;
+            line-height: 1.4;
+        }
+
+        /* Контейнер для canvas */
+        #canvasWrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #f5f6fa;
         }
 
         canvas {
             display: block;
-            margin: 20px auto;
-            background: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
-        /* Контекстное меню (появляется при клике ПКМ) */
-        .context-menu {
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        /* ====================
+           КНОПКИ / МЕНЮ ВЫБОРА ЦВЕТА
+           ==================== */
+
+        /* Кастомное контекстное меню */
+        #contextMenu {
+            position: fixed;
             display: none;
+            background: #fff;
+            border: 1px solid #000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            padding: 8px;
+            border-radius: 6px;
             z-index: 1000;
-            min-width: 150px;
         }
 
-        .context-menu-item {
-            padding: 10px 15px;
+        /* Один цвет в меню */
+        .colorOption {
+            width: 26px;
+            height: 26px;
+            display: inline-block;
+            margin: 4px;
+            border-radius: 4px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            border: 2px solid transparent;
         }
 
-        .context-menu-item:hover {
-            background: #f0f0f0;
-        }
-
-        .color-preview {
-            width: 20px;
-            height: 20px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
+        .colorOption:hover {
+            transform: scale(1.1);
+            border-color: #2f3640;
         }
     </style>
 </head>
+
 <body>
-    <!-- Панель управления параметрами сетки -->
-    <div class="control-panel">
-        <h2>Настройки сетки</h2>
-        
-        <div class="control-group">
-            <label for="rows">Количество рядов (вертикаль):</label>
-            <input type="number" id="rows" value="10" min="1" max="50">
-        </div>
+    <div id="app">
+        <!-- ====================
+             ПАНЕЛЬ НАСТРОЕК
+             ==================== -->
+        <aside id="sidebar">
+            <h2>Гексагональная сетка</h2>
 
-        <div class="control-group">
-            <label for="cols">Количество колонок (горизонталь):</label>
-            <input type="number" id="cols" value="10" min="1" max="50">
-        </div>
+            <!-- Количество элементов по горизонтали -->
+            <div class="field">
+                <label for="cols">Элементов по горизонтали (X)</label>
+                <input id="cols" type="number" min="1" value="12" step="1">
+            </div>
 
-        <div class="control-group">
-            <label for="scale">Масштаб (размер гекса):</label>
-            <input type="number" id="scale" value="30" min="10" max="100">
-        </div>
+            <!-- Количество элементов по вертикали -->
+            <div class="field">
+                <label for="rows">Элементов по вертикали (Y)</label>
+                <input id="rows" type="number" min="1" value="10" step="1">
+            </div>
 
-        <div class="control-group">
-            <label for="rotation">Угол поворота (градусы):</label>
-            <input type="number" id="rotation" value="0" min="0" max="360">
-        </div>
+            <!-- Масштаб / размер гексагона -->
+            <div class="field">
+                <label for="scale">Масштаб (размер гексагона)</label>
+                <input id="scale" type="number" min="5" step="1" value="32">
+            </div>
 
-        <div class="control-group">
-            <button onclick="generateGrid()">Сгенерировать сетку</button>
-        </div>
+            <!-- Угол поворота сетки -->
+            <div class="field">
+                <label for="angle">Угол поворота, °</label>
+                <input id="angle" type="number" step="1" value="0">
+            </div>
 
-        <div class="control-group">
-            <p style="font-size: 12px; color: #666;">
-                ПКМ на гексе → выбор цвета<br>
-                ЛКМ → снять выделение
+            <!-- Кнопка применения параметров -->
+            <button id="applyBtn" class="btn">Применить</button>
+
+            <!-- Кнопка сброса цветов -->
+            <button id="clearBtn" class="btn secondary">Сбросить цвета</button>
+
+            <!-- Подсказка пользователю -->
+            <p id="hint">
+                ПКМ по элементу — открыть меню выбора одного из 6 цветов.<br>
+                При смене масштаба/поворота цвета сохраняются, если размер сетки не меняется.<br>
+                При изменении X/Y сетка пересоздается, и цвета сбрасываются.
             </p>
-        </div>
+        </aside>
+
+        <!-- ====================
+             ОБЛАСТЬ РИСОВАНИЯ
+             ==================== -->
+        <main id="canvasWrap">
+            <canvas id="canvas"></canvas>
+        </main>
     </div>
 
-    <!-- Контейнер для холста -->
-    <div id="canvas-container">
-        <canvas id="hexGrid"></canvas>
-    </div>
-
-    <!-- Контекстное меню для выбора цвета -->
-    <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" data-color="#FF6B6B">
-            <div class="color-preview" style="background: #FF6B6B;"></div>
-            <span>Красный</span>
-        </div>
-        <div class="context-menu-item" data-color="#4ECDC4">
-            <div class="color-preview" style="background: #4ECDC4;"></div>
-            <span>Бирюзовый</span>
-        </div>
-        <div class="context-menu-item" data-color="#45B7D1">
-            <div class="color-preview" style="background: #45B7D1;"></div>
-            <span>Голубой</span>
-        </div>
-        <div class="context-menu-item" data-color="#96CEB4">
-            <div class="color-preview" style="background: #96CEB4;"></div>
-            <span>Зелёный</span>
-        </div>
-        <div class="context-menu-item" data-color="#FFEAA7">
-            <div class="color-preview" style="background: #FFEAA7;"></div>
-            <span>Жёлтый</span>
-        </div>
-        <div class="context-menu-item" data-color="#DDA0DD">
-            <div class="color-preview" style="background: #DDA0DD;"></div>
-            <span>Фиолетовый</span>
-        </div>
-    </div>
+    <!-- Кастомное меню выбора цвета -->
+    <div id="contextMenu"></div>
 
     <script>
-        // ============================================
-        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-        // ============================================
-        
-        const canvas = document.getElementById('hexGrid');
+        'use strict';
+
+        /* ====================================================
+           БАЗОВЫЕ КОНСТАНТЫ И СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+           ==================================================== */
+
+        // Шесть доступных цветов для контекстного меню.
+        // Их можно заменить на любые другие hex-цвета.
+        const COLORS = [
+            '#e74c3c', // красный
+            '#e67e22', // оранжевый
+            '#f1c40f', // желтый
+            '#2ecc71', // зеленый
+            '#3498db', // синий
+            '#9b59b6'  // фиолетовый
+        ];
+
+        // DOM-элементы
+        const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const contextMenu = document.getElementById('contextMenu');
-        
-        let hexGrid = []; // Массив для хранения данных о всех гексах
-        let selectedHex = null; //currently выбранный гекс
-        let hexSize = 30; // Размер гекса (будет обновляться из настроек)
-        let rotation = 0; // Угол поворота в радианах
 
-        // ============================================
-        // ФУНКЦИЯ: Расчёт координат вершин гекса
-        // ============================================
-        /**
-         * Вычисляет 6 вершин правильного гексагона
-         * @param {number} centerX - X координата центра
-         * @param {number} centerY - Y координата центра
-         * @param {number} size - Размер (радиус) гекса
-         * @param {number} rotation - Угол поворота в радианах
-         * @returns {Array} Массив объектов {x, y} с координатами вершин
-         */
-        function calculateHexVertices(centerX, centerY, size, rotation) {
-            const vertices = [];
-            for (let i = 0; i < 6; i++) {
-                // Угол каждой вершины (60 градусов между вершинами + поворот)
-                const angle = (Math.PI / 3) * i + rotation;
-                vertices.push({
-                    x: centerX + size * Math.cos(angle),
-                    y: centerY + size * Math.sin(angle)
-                });
+        // Поля ввода параметров
+        const colsInput = document.getElementById('cols');
+        const rowsInput = document.getElementById('rows');
+        const scaleInput = document.getElementById('scale');
+        const angleInput = document.getElementById('angle');
+
+        // Кнопки
+        const applyBtn = document.getElementById('applyBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // Контейнер, внутри которого находится canvas
+        const canvasWrap = document.getElementById('canvasWrap');
+
+        // Текущие параметры сетки
+        let cols = 12;      // количество элементов по горизонтали
+        let rows = 10;      // количество элементов по вертикали
+        let scale = 32;     // радиус гексагона, то есть масштаб
+        let angleDeg = 0;   // угол поворота сетки в градусах
+
+        // Массив всех гексагонов.
+        // Каждый элемент выглядит так:
+        // {
+        //   x: число,       // координата центра по X в мировой системе
+        //   y: число,       // координата центра по Y в мировой системе
+        //   color: string | null  // назначенный цвет либо null
+        // }
+        let hexes = [];
+
+        // Выбранный элемент.
+        // Если выбран — рисуется красная рамка.
+        let selectedHex = null;
+
+
+        /* ====================================================
+           ГЕНЕРАЦИЯ ГЕКСАГОНАЛЬНОЙ СЕТКИ
+           ==================================================== */
+
+        // Функция создает массив hexes на основе текущих параметров:
+        // - cols: количество элементов по горизонтали
+        // - rows: количество элементов по вертикали
+        // - scale: размер гексагона
+        function generateHexes() {
+            // Очищаем старый массив
+            hexes = [];
+
+            // Для pointy-top гексагона:
+            // ширина = sqrt(3) * scale
+            const hexWidth = Math.sqrt(3) * scale;
+
+            // Вертикальное расстояние между центрами соседних строк:
+            // 1.5 * scale
+            const rowHeight = 1.5 * scale;
+
+            // Если есть хотя бы одна нечетная строка, она смещается на полгексагона.
+            // Поэтому максимальное смещение по X нужно учитывать при центрировании.
+            const maxShift = (rows > 1) ? hexWidth / 2 : 0;
+
+            // Полная ширина и высота сетки в мировой системе
+            const totalWidth = hexWidth * (cols - 1) + maxShift;
+            const totalHeight = rowHeight * (rows - 1);
+
+            // Смещения, чтобы сетка была по центру мировой системы
+            const offsetX = totalWidth / 2;
+            const offsetY = totalHeight / 2;
+
+            // Заполняем сетку строками и столбцами
+            for (let r = 0; r < rows; r++) {
+                // Четные строки не сдвигаем.
+                // Нечетные строки сдвигаем на полгексагона вправо.
+                const rowShift = (r % 2 === 1) ? hexWidth / 2 : 0;
+
+                for (let c = 0; c < cols; c++) {
+                    // Координаты центра гексагона
+                    const x = c * hexWidth + rowShift - offsetX;
+                    const y = r * rowHeight - offsetY;
+
+                    // color = null означает, что заливка будет белой.
+                    // Если нужна прозрачность, можно заменить null на 'transparent'
+                    // в функции отрисовки.
+                    hexes.push({
+                        x: x,
+                        y: y,
+                        color: null
+                    });
+                }
             }
-            return vertices;
         }
 
-        // ============================================
-        // ФУНКЦИЯ: Отрисовка одного гекса
-        // ============================================
-        /**
-         * Рисует один гексагон на холсте
-         * @param {Object} hex - Объект гекса с координатами и цветом
-         */
-        function drawHex(hex) {
-            const vertices = hex.vertices;
-            
+
+        /* ====================================================
+           ОТРИСОВКА
+           ==================================================== */
+
+        // Рисует контур одного pointy-top гексагона.
+        // x, y — центр гексагона в мировой системе.
+        // size — радиус гексагона.
+        function drawHexPath(x, y, size) {
             ctx.beginPath();
-            ctx.moveTo(vertices[0].x, vertices[0].y);
-            
-            // Соединяем все вершины линиями
-            for (let i = 1; i < vertices.length; i++) {
-                ctx.lineTo(vertices[i].x, vertices[i].y);
+
+            // Углы вершин pointy-top гексагона:
+            // -30°, 30°, 90°, 150°, 210°, 270°
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 180) * (60 * i - 30);
+
+                const px = x + size * Math.cos(angle);
+                const py = y + size * Math.sin(angle);
+
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
             }
-            
+
             ctx.closePath();
-            
-            // Заливка цветом (если есть) или прозрачная/белая
-            if (hex.color) {
-                ctx.fillStyle = hex.color;
-                ctx.fill();
-            } else {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.fill();
-            }
-            
-            // Обводка гекса
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            // Если гекс выбран, добавляем дополнительную обводку
-            if (selectedHex === hex) {
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
         }
 
-        // ============================================
-        // ФУНКЦИЯ: Генерация гексагональной сетки
-        // ============================================
-        /**
-         * Создаёт и отрисовывает всю гексагональную сетку
-         * Учитывает смещение рядов для правильной гексагональной упаковки
-         */
-        function generateGrid() {
-            // Получаем параметры из панели управления
-            const rows = parseInt(document.getElementById('rows').value);
-            const cols = parseInt(document.getElementById('cols').value);
-            hexSize = parseInt(document.getElementById('scale').value);
-            rotation = (parseInt(document.getElementById('rotation').value) * Math.PI) / 180;
-            
-            // Вычисляем размеры гекса
-            const hexWidth = hexSize * Math.sqrt(3); // Ширина гекса
-            const hexHeight = hexSize * 2; // Высота гекса
-            
-            // Вертикальное расстояние между рядами (3/4 от высоты для плотной упаковки)
-            const verticalSpacing = hexHeight * 0.75;
-            // Горизонтальное расстояние между колонками
-            const horizontalSpacing = hexWidth;
-            
-            // Устанавливаем размер холста с запасом
-            canvas.width = cols * horizontalSpacing + hexSize * 2;
-            canvas.height = rows * verticalSpacing + hexSize * 2;
-            
+        // Основная функция отрисовки всего холста.
+        function draw() {
+            // CSS-размеры холста в пикселях.
+            // devicePixelRatio уже учтен в resizeCanvas.
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+
             // Очищаем холст
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Сбрасываем сетку
-            hexGrid = [];
-            
-            // Генерируем каждый гекс
-            for (let row = 0; row < rows; row++) {
-                hexGrid[row] = [];
-                for (let col = 0; col < cols; col++) {
-                    // Смещение для нечётных рядов (шахматный порядок)
-                    const xOffset = (row % 2 === 1) ? (hexWidth / 2) : 0;
-                    
-                    // Вычисляем центр гекса
-                    const centerX = col * horizontalSpacing + hexSize + xOffset + hexSize;
-                    const centerY = row * verticalSpacing + hexSize + hexSize;
-                    
-                    // Создаём объект гекса
-                    const hex = {
-                        row: row,
-                        col: col,
-                        centerX: centerX,
-                        centerY: centerY,
-                        vertices: calculateHexVertices(centerX, centerY, hexSize, rotation),
-                        color: null // Изначально без цвета (прозрачный/белый)
-                    };
-                    
-                    hexGrid[row][col] = hex;
-                    drawHex(hex);
+            ctx.clearRect(0, 0, width, height);
+
+            // Фон холста
+            ctx.fillStyle = '#f5f6fa';
+            ctx.fillRect(0, 0, width, height);
+
+            // Сохраняем текущую матрицу трансформаций.
+            // Это нужно, чтобы поворот и перенос не повлияли на весь холст навсегда.
+            ctx.save();
+
+            // Переносим начало координат в центр холста.
+            // Благодаря этому сетка рисуется относительно центра.
+            ctx.translate(width / 2, height / 2);
+
+            // Поворачиваем всю сетку на заданный угол.
+            ctx.rotate((angleDeg * Math.PI) / 180);
+
+            // Отрисовываем каждый гексагон
+            for (const hex of hexes) {
+                // Рисуем контур гексагона
+                drawHexPath(hex.x, hex.y, scale);
+
+                // Заливаем гексагон.
+                // Если цвет назначен — используем его.
+                // Если цвет не назначен — рисуем белым.
+                // Если нужна прозрачная заливка, можно заменить '#ffffff' на 'transparent'.
+                ctx.fillStyle = hex.color || '#ffffff';
+                ctx.fill();
+
+                // Обычная граница гексагона
+                ctx.strokeStyle = '#576574';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Если этот гексагон выбран — рисуем дополнительную красную рамку
+                if (selectedHex && hex === selectedHex) {
+                    drawHexPath(hex.x, hex.y, scale);
+
+                    ctx.strokeStyle = '#e74c3c';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
                 }
             }
+
+            // Возвращаем матрицу трансформаций в исходное состояние
+            ctx.restore();
         }
 
-        // ============================================
-        // ФУНКЦИЯ: Проверка попадания точки в гекс
-        // ============================================
-        /**
-         * Определяет, находится ли точка внутри гексагона
-         * Использует алгоритм проверки точки в полигоне
-         * @param {number} x - X координата точки
-         * @param {number} y - Y координата точки
-         * @param {Object} hex - Объект гекса
-         * @returns {boolean} true если точка внутри гекса
-         */
-        function isPointInHex(x, y, hex) {
-            const vertices = hex.vertices;
-            let inside = false;
-            
-            // Алгоритм луча: считаем пересечения луча с рёбрами полигона
-            for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
-                const xi = vertices[i].x, yi = vertices[i].y;
-                const xj = vertices[j].x, yj = vertices[j].y;
-                
-                // Проверяем пересечение
-                const intersect = ((yi > y) !== (yj > y)) &&
-                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                
-                if (intersect) inside = !inside;
-            }
-            
-            return inside;
+
+        /* ====================================================
+           АДАПТАЦИЯ ХОЛСТА ПОД РАЗМЕР ОКНА
+           ==================================================== */
+
+        // Настраивает размер canvas под текущий размер контейнера.
+        // Также учитывает devicePixelRatio для более четкой картинки
+        // на Retina/HiDPI экранах.
+        function resizeCanvas() {
+            // Учет плотности пикселей экрана
+            const dpr = window.devicePixelRatio || 1;
+
+            // Текущие CSS-размеры контейнера
+            const width = canvasWrap.clientWidth;
+            const height = canvasWrap.clientHeight;
+
+            // Физический размер canvas в пикселях устройства
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+
+            // CSS-размер canvas, чтобы он занимал весь контейнер
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+
+            // Масштабируем контекст.
+            // После этого координаты отрисовки можно использовать
+            // в обычных CSS-пикселях.
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            // Перерисовываем холст
+            draw();
         }
 
-        // ============================================
-        // ФУНКЦИЯ: Поиск гекса под курсором
-        // ============================================
-        /**
-         * Находит гекс, под которым находится точка клика
-         * @param {number} x - X координата клика
-         * @param {number} y - Y координата клика
-         * @returns {Object|null} Объект гекса или null если не найден
-         */
-        function getHexAtPosition(x, y) {
-            for (let row of hexGrid) {
-                for (let hex of row) {
-                    if (isPointInHex(x, y, hex)) {
-                        return hex;
-                    }
+        // При изменении размера окна окна перерисовываем холст
+        window.addEventListener('resize', resizeCanvas);
+
+
+        /* ====================================================
+           ОПРЕДЕЛЕНИЕ ЭЛЕМЕНТА ПО КЛИКУ
+           ==================================================== */
+
+        // Преобразует экранные координаты курсора
+        // в мировые координаты до поворота сетки.
+        //
+        // screenX, screenY — координаты относительно левого верхнего угла canvas.
+        function screenToWorld(screenX, screenY) {
+            // Центр холста
+            const cx = canvas.clientWidth / 2;
+            const cy = canvas.clientHeight / 2;
+
+            // Вектор от центра холста до курсора
+            let x = screenX - cx;
+            let y = screenY - cy;
+
+            // Нам нужен обратный поворот,
+            // потому что отрисовка выполнялась с поворотом на angleDeg.
+            const angle = -angleDeg * (Math.PI / 180);
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+
+            // Обратная матрица поворота
+            const worldX = x * cos - y * sin;
+            const worldY = x * sin + y * cos;
+
+            return {
+                x: worldX,
+                y: worldY
+            };
+        }
+
+        // Точная проверка попадания точки в pointy-top гексагон.
+        //
+        // hex — проверяемый гексагон
+        // worldX, worldY — точка в мировой системе координат
+        function pointInHex(hex, worldX, worldY) {
+            // Расстояния от точки до центра гексагона по X и Y
+            const dx = Math.abs(worldX - hex.x);
+            const dy = Math.abs(worldY - hex.y);
+
+            // Аптема — расстояние от центра до середины ребра.
+            // Для pointy-top гексагона: sqrt(3) / 2 * scale
+            const apothem = (Math.sqrt(3) / 2) * scale;
+
+            // Условие попадания внутрь pointy-top гексагона:
+            // 1) точка не выходит за горизонтальные пределы
+            // 2) точка не выходит за наклонные верхние/нижние края
+            return (
+                dx <= apothem &&
+                dy <= scale - dx / Math.sqrt(3)
+            );
+        }
+
+        // Ищет гексагон, в который попал курсор.
+        //
+        // screenX, screenY — координаты относительно canvas.
+        // Возвращает объект hex либо null, если клик мимо сетки.
+        function findHexAt(screenX, screenY) {
+            // Переводим координаты курсора в мировую систему
+            const world = screenToWorld(screenX, screenY);
+
+            // Перебираем все гексагоны и ищем первый, куда попала точка
+            for (const hex of hexes) {
+                if (pointInHex(hex, world.x, world.y)) {
+                    return hex;
                 }
             }
+
             return null;
         }
 
-        // ============================================
-        // ФУНКЦИЯ: Перерисовка всей сетки
-        // ============================================
-        /**
-         * Полная перерисовка сетки (используется при изменениях)
-         */
-        function redrawGrid() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let row of hexGrid) {
-                for (let hex of row) {
-                    drawHex(hex);
-                }
-            }
+
+        /* ====================================================
+           КОНТЕКСТНОЕ МЕНЮ ВЫБОРА ЦВЕТА
+           ==================================================== */
+
+        // Создает элементы меню для каждого из 6 цветов.
+        function buildContextMenu() {
+            // Для каждого цвета создаем кликабельный квадратик
+            COLORS.forEach(color => {
+                const item = document.createElement('div');
+                item.className = 'colorOption';
+                item.style.background = color;
+                item.title = 'Присвоить этот цвет';
+
+                // Обработчик клика по цвету
+                item.addEventListener('click', () => {
+                    // Если выделен элемент — назначаем ему выбранный цвет
+                    if (selectedHex) {
+                        selectedHex.color = color;
+
+                        // Перерисовываем холст, чтобы увидеть изменение
+                        draw();
+                    }
+
+                    // Скрываем меню
+                    contextMenu.style.display = 'none';
+                });
+
+                // Добавляем цвет в меню
+                contextMenu.appendChild(item);
+            });
         }
 
-        // ============================================
-        // ОБРАБОТЧИКИ СОБЫТИЙ
-        // ============================================
-
-        // Обработка правого клика (контекстное меню)
+        // Обработчик правого клика по canvas
         canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); // Блокируем стандартное меню браузера
-            
-            // Получаем координаты клика относительно холста
+            // Отключаем стандартное контекстное меню браузера
+            e.preventDefault();
+
+            // Получаем координаты курсора относительно canvas
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            // Находим гекс под курсором
-            const hex = getHexAtPosition(x, y);
-            
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+
+            // Ищем гексагон под курсором
+            const hex = findHexAt(screenX, screenY);
+
             if (hex) {
-                selectedHex = hex; // Запоминаем выбранный гекс
-                redrawGrid(); // Перерисовываем для показа выделения
-                
-                // Показываем контекстное меню в позиции клика
+                // Если найден гексагон — выделяем его
+                selectedHex = hex;
+
+                // Перерисовываем, чтобы показать выделение
+                draw();
+
+                // Показываем кастомное меню в позиции курсора
                 contextMenu.style.display = 'block';
                 contextMenu.style.left = e.clientX + 'px';
                 contextMenu.style.top = e.clientY + 'px';
+
+                // Простая защита, чтобы меню не вылезало за правый или нижний край окна
+                const menuRect = contextMenu.getBoundingClientRect();
+
+                if (menuRect.right > window.innerWidth) {
+                    contextMenu.style.left = (e.clientX - menuRect.width) + 'px';
+                }
+
+                if (menuRect.bottom > window.innerHeight) {
+                    contextMenu.style.top = (e.clientY - menuRect.height) + 'px';
+                }
+            } else {
+                // Если клик мимо сетки — снимаем выделение и скрываем меню
+                selectedHex = null;
+                draw();
+                contextMenu.style.display = 'none';
             }
         });
 
-        // Обработка левого клика (снятие выделения)
-        canvas.addEventListener('click', (e) => {
-            selectedHex = null;
-            redrawGrid();
-            contextMenu.style.display = 'none';
-        });
-
-        // Обработка выбора цвета из контекстного меню
-        document.querySelectorAll('.context-menu-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (selectedHex) {
-                    const color = item.getAttribute('data-color');
-                    selectedHex.color = color; // Присваиваем цвет гексу
-                    redrawGrid(); // Перерисовываем сетку
-                }
-                contextMenu.style.display = 'none';
-            });
-        });
-
-        // Скрытие контекстного меню при клике в любом месте
+        // Скрываем меню при клике вне него
         document.addEventListener('click', (e) => {
             if (!contextMenu.contains(e.target)) {
                 contextMenu.style.display = 'none';
             }
         });
 
-        // ============================================
-        // ИНИЦИАЛИЗАЦИЯ
-        // ============================================
-        // Генерируем начальную сетку при загрузке страницы
-        generateGrid();
+        // Скрываем меню и снимаем выделение по Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                contextMenu.style.display = 'none';
+                selectedHex = null;
+                draw();
+            }
+        });
 
+
+        /* ====================================================
+           УПРАВЛЕНИЕ ПАРАМЕТРАМИ СЕТКИ
+           ==================================================== */
+
+        // Обработчик кнопки «Применить»
+        applyBtn.addEventListener('click', () => {
+            // Читаем новые значения из полей ввода
+            const newCols = Math.max(1, parseInt(colsInput.value, 10) || 1);
+            const newRows = Math.max(1, parseInt(rowsInput.value, 10) || 1);
+            const newScale = Math.max(5, parseFloat(scaleInput.value) || 5);
+            const newAngle = parseFloat(angleInput.value) || 0;
+
+            // Если размер сетки не меняется, можно сохранить ранее назначенные цвета
+            const preserveColors = (cols === newCols && rows === newRows);
+
+            // Сохраняем старый массив, чтобы при необходимости скопировать цвета
+            const oldHexes = hexes;
+
+            // Обновляем глобальные параметры
+            cols = newCols;
+            rows = newRows;
+            scale = newScale;
+            angleDeg = newAngle;
+
+            // Синхронизируем поля ввода с действительно примененными значениями
+            colsInput.value = cols;
+            rowsInput.value = rows;
+            scaleInput.value = scale;
+            angleInput.value = angleDeg;
+
+            // При пересоздании сетки старое выделение сбрасывается
+            selectedHex = null;
+
+            // Генерируем новую сетку
+            generateHexes();
+
+            // Если размер не менялся, возвращаем старые цвета по индексу
+            if (preserveColors) {
+                for (let i = 0; i < hexes.length; i++) {
+                    if (oldHexes[i]) {
+                        hexes[i].color = oldHexes[i].color;
+                    }
+                }
+            }
+
+            // Перерисовываем
+            draw();
+        });
+
+        // Обработчик кнопки «Сбросить цвета»
+        clearBtn.addEventListener('click', () => {
+            // У всех гексагонов color = null,
+            // то есть они снова станут белыми.
+            for (const hex of hexes) {
+                hex.color = null;
+            }
+
+            // Снимаем выделение
+            selectedHex = null;
+
+            // Перерисовываем
+            draw();
+        });
+
+        // Позволяет применять параметры по Enter в любом поле ввода
+        [colsInput, rowsInput, scaleInput, angleInput].forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    applyBtn.click();
+                }
+            });
+        });
+
+
+        /* ====================================================
+           СТАРТ ПРИЛОЖЕНИЯ
+           ==================================================== */
+
+        // Создаем меню выбора цвета
+        buildContextMenu();
+
+        // Генерируем начальную сетку
+        generateHexes();
+
+        // Настраиваем размер холста и выполняем первую отрисовку
+        resizeCanvas();
     </script>
 </body>
 </html>
